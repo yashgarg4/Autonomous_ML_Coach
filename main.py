@@ -1,8 +1,4 @@
 # main.py
-import os
-os.environ["GOOGLE_API_KEY"] = "AIzaSyDqX8nExVyBu-R0-Fvqonyt7wQl2pyVNA0"
-
-# main.py
 import sys
 from agents.researcher import create_researcher_agent
 from agents.coder import create_coder_agent
