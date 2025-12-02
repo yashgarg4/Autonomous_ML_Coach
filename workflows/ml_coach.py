@@ -15,9 +15,6 @@ Optional environment variables:
 """
 
 import os
-os.environ["GOOGLE_API_KEY"] = "AIzaSyDqX8nExVyBu-R0-Fvqonyt7wQl2pyVNA0"
-
-import os
 import time
 import re
 
