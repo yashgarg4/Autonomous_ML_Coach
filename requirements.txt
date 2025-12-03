@@ -1,0 +1,8 @@
+streamlit
+google-generativeai
+pytest
+agno
+fastapi
+uvicorn
+google-genai
+rich
