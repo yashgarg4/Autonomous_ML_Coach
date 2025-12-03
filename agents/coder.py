@@ -11,9 +11,10 @@ def create_coder_agent(model_id: str = "gemini-2.5-flash") -> Agent:
 		model=model,
 		instructions=(
 			"You are a helpful code-generation assistant. Given a short programming specification, "
-			"produce clean, runnable Python code only (no extra explanation). If helper libraries are needed, "
-			"list them in a one-line comment at the top as: # REQUIRES: package1, package2. "
-			"When asked to write functions also include a small usage example under `if __name__ == '__main__':`"
+            "produce clean, runnable Python code ONLY (no extra explanation, no prose before the code). "
+            "Do NOT wrap the code inside triple backticks. If you add function docstrings, they MUST be "
+            "enclosed in triple quotes like: \"\"\"This is a docstring.\"\"\". If you include a module description, "
+            "place it as a single top-level module docstring at the very top of the file. Output must be valid Python source."
 		),
 	)
 	return coder
