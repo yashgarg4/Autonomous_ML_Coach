@@ -1,76 +1,88 @@
-import pytest
-import random
-from attention_model import get_simple_token_length, calculate_attention_weights
+from generated_code import merge_sort, merge
 
-@pytest.mark.parametrize(
-    "text, expected_count",
-    [
-        ("A simple sentence with five tokens", 5),
-        ("one", 1),
-        ("", 0),
-        ("  leading and trailing spaces  ", 4),
-        ("multiple   spaces    between", 3),
-        ("words\nwith\tdifferent\rwhitespace", 4),
-    ],
-)
-def test_get_simple_token_length(text, expected_count):
-    """Tests the token counting function with various inputs."""
-    assert get_simple_token_length(text) == expected_count
+def test_merge_empty_lists():
+    assert merge([], []) == []
 
-def test_calculate_attention_weights_empty_string():
-    """Tests that an empty string results in an empty dictionary."""
-    assert calculate_attention_weights("") == {}
+def test_merge_one_empty_list():
+    assert merge([1, 2, 3], []) == [1, 2, 3]
+    assert merge([], [4, 5, 6]) == [4, 5, 6]
 
-def test_calculate_attention_weights_single_token():
-    """Tests that a single token gets an attention weight of 1.0."""
-    weights = calculate_attention_weights("transformer")
-    assert len(weights) == 1
-    assert weights["transformer"] == pytest.approx(1.0)
+def test_merge_basic_sorted_lists():
+    assert merge([1, 3, 5], [2, 4, 6]) == [1, 2, 3, 4, 5, 6]
 
-def test_calculate_attention_weights_is_deterministic_with_seed():
-    """Tests that the function produces a predictable output with a fixed seed."""
-    random.seed(42)
-    text = "the quick brown fox"
-    weights = calculate_attention_weights(text)
+def test_merge_lists_with_overlap():
+    assert merge([1, 2, 5], [3, 4, 6]) == [1, 2, 3, 4, 5, 6]
 
-    # Check that all unique tokens are present as keys
-    assert set(weights.keys()) == {"the", "quick", "brown", "fox"}
+def test_merge_lists_with_duplicates():
+    assert merge([1, 2, 2, 5], [2, 3, 5, 6]) == [1, 2, 2, 2, 3, 5, 5, 6]
 
-    # Check that the weights sum to 1.0
-    assert sum(weights.values()) == pytest.approx(1.0)
+def test_merge_lists_one_fully_before_other():
+    assert merge([1, 2, 3], [4, 5, 6]) == [1, 2, 3, 4, 5, 6]
+    assert merge([4, 5, 6], [1, 2, 3]) == [1, 2, 3, 4, 5, 6]
 
-    # Check against pre-calculated values for the given seed
-    expected = {
-        "the": 0.3871791142542571,
-        "quick": 0.015144262143097103,
-        "brown": 0.4432296115995574,
-        "fox": 0.1544470120030884,
-    }
-    assert weights == pytest.approx(expected)
+def test_merge_lists_different_lengths():
+    assert merge([1, 5, 10], [2, 3]) == [1, 2, 3, 5, 10]
+    assert merge([2, 3], [1, 5, 10]) == [1, 2, 3, 5, 10]
 
-def test_calculate_attention_weights_with_repeated_tokens():
-    """
-    Tests the behavior with repeated tokens. The resulting dictionary should
-    only contain the attention weight of the last occurrence of a token.
-    """
-    random.seed(101)
-    text = "a rose is a rose"  # tokens: ['a', 'rose', 'is', 'a', 'rose']
-    weights = calculate_attention_weights(text)
+def test_merge_lists_with_negative_numbers():
+    assert merge([-5, -1, 0], [-3, 2, 4]) == [-5, -3, -1, 0, 2, 4]
 
-    # The dictionary should have one entry for each unique token
-    assert set(weights.keys()) == {"a", "rose", "is"}
-    assert len(weights) == 3
+def test_merge_lists_with_floats():
+    assert merge([1.1, 3.3], [2.2, 4.4]) == [1.1, 2.2, 3.3, 4.4]
 
-    # The sum of the values in the dictionary will NOT be 1.0 because
-    # the weights for the first 'a' and 'rose' were overwritten.
-    assert sum(weights.values()) != pytest.approx(1.0)
+def test_merge_lists_all_equal():
+    assert merge([5, 5, 5], [5, 5]) == [5, 5, 5, 5, 5]
 
-    # Check against pre-calculated values for the given seed and text
-    # The final dict should map 'is' to its weight, the second 'a' to its
-    # weight, and the second 'rose' to its weight.
-    expected = {
-        "is": 0.3867262445859187,
-        "a": 0.04688599426913702,
-        "rose": 0.10579536434656487,
-    }
-    assert weights == pytest.approx(expected)
+
+def test_merge_sort_empty_list():
+    assert merge_sort([]) == []
+
+def test_merge_sort_single_element_list():
+    assert merge_sort([5]) == [5]
+
+def test_merge_sort_already_sorted_list():
+    arr = [1, 2, 3, 4, 5]
+    assert merge_sort(arr) == [1, 2, 3, 4, 5]
+
+def test_merge_sort_reverse_sorted_list():
+    arr = [5, 4, 3, 2, 1]
+    assert merge_sort(arr) == [1, 2, 3, 4, 5]
+
+def test_merge_sort_unsorted_list():
+    arr = [3, 1, 4, 1, 5, 9, 2, 6]
+    assert merge_sort(arr) == [1, 1, 2, 3, 4, 5, 6, 9]
+
+def test_merge_sort_list_with_duplicates():
+    arr = [5, 2, 8, 2, 5, 1, 8]
+    assert merge_sort(arr) == [1, 2, 2, 5, 5, 8, 8]
+
+def test_merge_sort_list_with_negative_numbers():
+    arr = [-3, 0, -1, 5, -2, 4]
+    assert merge_sort(arr) == [-3, -2, -1, 0, 4, 5]
+
+def test_merge_sort_list_with_mixed_numbers():
+    arr = [0, -5, 10, -2, 7, -1, 3]
+    assert merge_sort(arr) == [-5, -2, -1, 0, 3, 7, 10]
+
+def test_merge_sort_list_with_floats():
+    arr = [3.1, 1.2, 4.5, 2.3]
+    assert merge_sort(arr) == [1.2, 2.3, 3.1, 4.5]
+
+def test_merge_sort_large_list():
+    arr = [9, 2, 5, 1, 7, 6, 8, 3, 4, 0, 10, -1, 11, -2, 12]
+    expected = [-2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    assert merge_sort(arr) == expected
+
+def test_merge_sort_list_all_equal_elements():
+    arr = [7, 7, 7, 7, 7]
+    assert merge_sort(arr) == [7, 7, 7, 7, 7]
+
+def test_merge_sort_original_list_is_unchanged():
+    original_arr = [3, 1, 4, 1, 5, 9, 2, 6]
+    arr_copy = list(original_arr)
+    merge_sort(arr_copy) # call on a copy to ensure immutability is handled by the return value
+    assert original_arr == [3, 1, 4, 1, 5, 9, 2, 6]
+    # Also explicitly check the function does not modify the input list
+    arr_test = [3, 1, 4]
+    _ = merge_sort(arr_test)
+    assert arr_test == [3, 1, 4] # `merge_sort` returns a new list, does not modify `arr_test`

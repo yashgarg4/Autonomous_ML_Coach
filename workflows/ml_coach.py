@@ -1,6 +1,3 @@
-import os
-
-# workflows/ml_coach.py
 """
 Autonomous ML Coach workflow (final):
   - researcher -> coder (with sanitizer + retries) -> save code
@@ -12,10 +9,6 @@ Autonomous ML Coach workflow (final):
 """
 
 import os
-<<<<<<< HEAD
-=======
-import time
->>>>>>> ed3043081830089835c95c5620f4918e76281178
 import re
 import time
 from typing import Tuple
@@ -210,63 +203,51 @@ def extract_patch_from_debugger(text: str) -> str | None:
 
 # ---- One iteration runner ----
 def run_iteration(researcher, coder, test_writer, debugger, user_prompt, run_timeout):
-    diagnostics = {}
-    print("[STEP] Running Researcher...")
+    """Runs one full iteration and yields status updates."""
+    yield {"message": "[STEP] Running Researcher..."}
     r_out = researcher.run(user_prompt)
     r_text = extract_content(r_out)
-    diagnostics["research_text"] = r_text
-    print("[STEP] Researcher produced text (truncated):")
-    print(r_text[:800])
+    yield {"message": "[STEP] Researcher produced text.", "research_text": r_text}
 
     # Coder (with retries + sanitizer)
-    print("[STEP] Running Coder (with sanitizer + retries)...")
+    yield {"message": "[STEP] Running Coder (with sanitizer + retries)..."}
     base_coder_prompt = "Based on this spec produce runnable Python code only (no extra explanation):\n\n" + r_text
     c_text = run_coder_with_retries(coder, base_coder_prompt)
     # additional protective fixes
     c_text = fix_unquoted_docstrings(c_text)
-    diagnostics["code_text"] = c_text
-    print("[STEP] Coder produced sanitized code (truncated):")
-    print(c_text[:800])
+    yield {"message": "[STEP] Coder produced sanitized code.", "code_text": c_text}
 
     # Save + static + runtime checks
     save_code(c_text)
     syn_ok, syn_msg = inspector.run_syntax_check("generated_code.py")
-    diagnostics["syntax_ok"] = syn_ok
-    diagnostics["syntax_msg"] = syn_msg
-    print("[CHECK] Syntax:", syn_msg)
+    yield {"message": f"[CHECK] Syntax: {syn_msg}", "syntax_ok": syn_ok, "syntax_msg": syn_msg}
 
     code_run_ret, run_stdout, run_stderr = inspector.run_file("generated_code.py", timeout=run_timeout)
-    diagnostics["run_retcode"] = code_run_ret
-    diagnostics["run_stdout"] = run_stdout
-    diagnostics["run_stderr"] = run_stderr
-    print("[RUN] return:", code_run_ret)
-    print("[RUN] stdout (truncated):", run_stdout[:500])
-    print("[RUN] stderr (truncated):", run_stderr[:500])
+    yield {
+        "message": f"[RUN] Code executed with return code: {code_run_ret}",
+        "run_retcode": code_run_ret, "run_stdout": run_stdout, "run_stderr": run_stderr
+    }
 
     # Test-Writer -> tests -> run pytest
-    print("[STEP] Running Test-Writer to generate pytest tests...")
+    yield {"message": "[STEP] Running Test-Writer to generate pytest tests..."}
     test_spec = "Write pytest tests that validate the main public functions in the code. Keep tests deterministic and avoid IO or network."
     test_in = f"SPEC:\n{test_spec}\n\nCODE:\n{c_text}\n"
     test_out = test_writer.run(test_in)
     test_text = extract_content(test_out)
     test_text = strip_code_fence(test_text)
-    # normalize imports & placeholders and save
     test_text = test_runner.make_test_runner_safe(test_text)
     test_runner.save_test_file(test_text, path="test_generated.py")
-    diagnostics["test_text"] = test_text
-    print("[TEST] Test file saved as test_generated.py (truncated):")
-    print(test_text[:800])
+    yield {"message": "[TEST] Test file saved as test_generated.py.", "test_text": test_text}
 
-    print("[TEST] Running pytest on test_generated.py ...")
+    yield {"message": "[TEST] Running pytest on test_generated.py ..."}
     tcode, tout, terr = test_runner.run_pytest("test_generated.py", timeout=12)
-    diagnostics["pytest_code"] = tcode
-    diagnostics["pytest_stdout"] = tout
-    diagnostics["pytest_stderr"] = terr
-    print("[TEST] pytest return:", tcode)
-    print("[TEST] pytest stdout (truncated):", tout[:800])
-    print("[TEST] pytest stderr (truncated):", terr[:800])
+    yield {
+        "message": f"[TEST] Pytest finished with return code: {tcode}",
+        "pytest_code": tcode, "pytest_stdout": tout, "pytest_stderr": terr
+    }
 
     # Debugger analysis
+    yield {"message": "[STEP] Running Debugger (analysis)..."}
     dbg_prompt = (
         "Analyze this Python file and the diagnostics below. List issues (numbered). "
         "If you propose a corrected full-file, provide it inside a fenced block labeled ```PATCH``` and nothing else inside that block.\n\n"
@@ -279,76 +260,73 @@ def run_iteration(researcher, coder, test_writer, debugger, user_prompt, run_tim
         f"PYTEST_STDERR:\n{terr}\n\n"
         "Be concise and precise."
     )
-    print("[STEP] Running Debugger (analysis)...")
     dbg_out = debugger.run(dbg_prompt)
     dbg_text = extract_content(dbg_out)
-    diagnostics["debugger_output"] = dbg_text
-    print("[DEBUGGER] out (truncated):")
-    print(dbg_text[:1500])
+    yield {"message": "[DEBUGGER] Analysis complete.", "debugger_output": dbg_text}
 
     # Patch handling: auto-apply if syntax failed and patch present (one-time)
     patch_text = extract_patch_from_debugger(dbg_text)
-    diagnostics["patch_text"] = patch_text
     if not syn_ok and patch_text:
-        print("[AUTO] Syntax error detected earlier. Applying Debugger PATCH automatically (one-time).")
+        yield {"message": "[AUTO] Syntax error detected. Applying Debugger PATCH automatically."}
         inspector.apply_patch("generated_code.py", patch_text)
         # re-check syntax and runtime
         syn_ok, syn_msg = inspector.run_syntax_check("generated_code.py")
-        diagnostics["syntax_ok"] = syn_ok
-        diagnostics["syntax_msg"] = syn_msg
         code_run_ret, run_stdout, run_stderr = inspector.run_file("generated_code.py", timeout=run_timeout)
-        diagnostics["run_retcode"] = code_run_ret
-        diagnostics["run_stdout"] = run_stdout
-        diagnostics["run_stderr"] = run_stderr
-        print("[AUTO] Re-checked syntax:", syn_msg)
+        yield {"message": f"[AUTO] Re-checked syntax: {syn_msg}", "syntax_ok": syn_ok, "syntax_msg": syn_msg}
 
-    return diagnostics
+    # Yield a final summary of this iteration's artifacts
+    yield {
+        "message": "Iteration complete. Ready for next step.",
+        "patch_text": patch_text,
+        "final_code": c_text
+    }
 
 # ---- Autonomous loop ----
-def autonomous_loop(user_prompt: str, max_iters: int = 3, run_timeout: int = 8):
+def autonomous_loop(user_prompt: str, max_iters: int = 3, run_timeout: int = 8, auto_patch_enabled: bool = False):
+    """Generator that yields status updates for the autonomous workflow."""
     researcher = create_researcher_agent()
     coder = create_coder_agent()
     test_writer = create_test_writer_agent()
     debugger = create_debugger_agent()
 
-    auto_patch = os.environ.get("AUTO_PATCH", "") == "1"
-    print(f"[CONFIG] AUTO_PATCH={auto_patch}, MAX_ITERS={max_iters}, RUN_TIMEOUT={run_timeout}s")
+    # For CLI mode, check env var. For UI, use passed param.
+    auto_patch = auto_patch_enabled or (os.environ.get("AUTO_PATCH", "") == "1")
+    yield {"message": f"[CONFIG] AUTO_PATCH={auto_patch}, MAX_ITERS={max_iters}, RUN_TIMEOUT={run_timeout}s"}
 
-    last_diag = {}
     for iteration in range(1, max_iters + 1):
-        print(f"==== ITERATION {iteration} ====")
+        yield {"message": f"==== ITERATION {iteration} ===="}
+        iteration_artifacts = {}
         try:
-            diag = run_iteration(researcher, coder, test_writer, debugger, user_prompt, run_timeout)
+            # Collect all yielded dictionaries from the iteration run
+            for status_update in run_iteration(researcher, coder, test_writer, debugger, user_prompt, run_timeout):
+                iteration_artifacts.update(status_update)
+                yield status_update # Pass status up to the UI
         except Exception as e:
-            print("[ERROR] Exception during iteration:", e)
-            return "error", {"exception": str(e)}
+            yield {"message": f"[ERROR] Exception during iteration: {e}", "exception": str(e)}
+            return
 
-        last_diag = diag
+        patch = iteration_artifacts.get("patch_text")
+        if not patch:
+            yield {"message": "[RESULT] No PATCH suggested by Debugger. Workflow completed."}
+            return
 
-        if not diag.get("patch_text"):
-            print("[RESULT] No PATCH suggested by Debugger. Workflow completed.")
-            return "no_patch", diag
-
-        patch = diag["patch_text"]
-        print("[RESULT] Debugger suggested a PATCH.")
-        print("[PATCH preview]\n", patch[:1000])
+        yield {"message": "[RESULT] Debugger suggested a PATCH.", "patch_text": patch}
 
         if auto_patch:
             inspector.apply_patch("generated_code.py", patch)
-            print("[AUTO] Patch applied.")
+            yield {"message": "[AUTO] Patch applied."}
             continue
 
         apply = input("Apply the suggested patch to generated_code.py? (y/n) ").strip().lower()
         if apply == "y":
             inspector.apply_patch("generated_code.py", patch)
-            print("[USER] Patch applied.")
+            yield {"message": "[USER] Patch applied."}
             continue
         else:
-            print("[USER] Patch skipped. Ending workflow.")
-            return "patch_skipped", diag
+            yield {"message": "[USER] Patch skipped. Ending workflow."}
+            return
 
-    print("[RESULT] Reached max iterations without converging.")
-    return "max_iters_reached", {"last_diag": last_diag}
+    yield {"message": "[RESULT] Reached max iterations without converging."}
 
 # ---- Main entry ----
 if __name__ == "__main__":
@@ -360,12 +338,18 @@ if __name__ == "__main__":
     max_iters = int(os.environ.get("MAX_ITERS", "3"))
     run_timeout = int(os.environ.get("RUN_TIMEOUT", "8"))
     start = time.time()
-    status, diag = autonomous_loop(prompt, max_iters=max_iters, run_timeout=run_timeout)
+
+    # For CLI execution, we just print the yielded messages
+    final_artifacts = {}
+    for status_update in autonomous_loop(prompt, max_iters=max_iters, run_timeout=run_timeout):
+        print(status_update.get("message", ""))
+        final_artifacts.update(status_update)
+
     dur = time.time() - start
     print("\n==== WORKFLOW FINISHED ====")
-    print("status:", status)
     print("duration:", f"{dur:.2f}s")
+
     for k in ("research_text", "code_text", "syntax_msg", "run_stdout", "run_stderr", "pytest_stdout", "pytest_stderr", "debugger_output"):
-        if k in diag:
-            print(f"\n--- {k.upper()} (truncated) ---\n", str(diag[k])[:1000])
+        if k in final_artifacts:
+            print(f"\n--- {k.upper()} (truncated) ---\n", str(final_artifacts[k])[:1000])
     print("\nFinal generated file: generated_code.py")
