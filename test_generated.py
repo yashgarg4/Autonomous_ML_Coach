@@ -82,7 +82,7 @@ def test_merge_sort_original_list_is_unchanged():
     arr_copy = list(original_arr)
     merge_sort(arr_copy) # call on a copy to ensure immutability is handled by the return value
     assert original_arr == [3, 1, 4, 1, 5, 9, 2, 6]
-    # Also explicitly check the function does not modify the input list
+    # explicitly check the function does not modify the input list
     arr_test = [3, 1, 4]
     _ = merge_sort(arr_test)
     assert arr_test == [3, 1, 4] # `merge_sort` returns a new list, does not modify `arr_test`
