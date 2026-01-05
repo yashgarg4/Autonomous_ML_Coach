@@ -54,7 +54,7 @@ def save_code(text: str, path: str = "generated_code.py"):
         f.write(text)
     print(f"[IO] Saved code -> {path}")
 
-# ---- Sanitizer + coder retry logic ----
+# ---- Sanitizer + coder retry logic
 MAX_CODER_RETRIES = 2
 STRICT_CODER_SUFFIX = (
     "\n\nIMPORTANT: Output ONLY valid Python source. No prose outside of a single top-level module docstring. "
