@@ -23,7 +23,6 @@ def create_researcher_agent(model_id: str = "gemini-2.5-flash") -> Agent:
 
 
 if __name__ == "__main__":
-	# quick local test when running this file directly
 	r = create_researcher_agent()
 	query = "Explain transformers in 3 sentences"
 	try:
