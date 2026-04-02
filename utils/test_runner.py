@@ -1,4 +1,3 @@
-# utils/test_runner.py
 import subprocess
 import sys
 import os
