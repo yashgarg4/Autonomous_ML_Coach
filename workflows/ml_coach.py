@@ -140,7 +140,7 @@ def run_coder_with_retries(coder_agent, base_coder_prompt: str) -> str:
         time.sleep(0.3)
     return sanitized
 
-# ---- Fix simple unquoted docstrings inside functions ----
+# Fix simple unquoted docstrings inside functions
 def fix_unquoted_docstrings(code: str) -> str:
     if not code:
         return code
