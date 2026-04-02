@@ -1,4 +1,3 @@
-# utils/inspector.py
 import subprocess
 import sys
 import py_compile
